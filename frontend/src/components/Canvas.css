@@ -1,0 +1,83 @@
+.canvas-toolbar {
+  background: #fff;
+  border-radius: 25px;
+  border: 1px solid #ddd;
+  box-shadow: 0 1px 8px #ececec;
+  padding: 6px 16px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.canvas-btn-color {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  margin: 0 2px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+}
+.canvas-btn-color.selected {
+  border: 2px solid #222;
+}
+.canvas-canvas-area {
+  display: block;
+  margin: 0 auto;
+  border: 2px solid #3182ce;
+  background: #f9fafb;
+  border-radius: 12px;
+  box-shadow: 0 2px 18px #dae3ea;
+  max-width: 100vw;
+  max-height: 95vh;
+}
+.canvas-usersbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: #f7fafc;
+  border-radius: 8px;
+  padding: 7px 16px;
+  margin-bottom: 6px;
+  border: 1px solid #e2e8f0;
+}
+.canvas-usersbar-title {
+  color: #284fa7;
+  font-weight: 600;
+  margin-right: 7px;
+}
+.canvas-usersbar-user {
+  background: #e0e7ff;
+  color: #334155;
+  border-radius: 7px;
+  font-size: 1rem;
+  margin-right: 3px;
+  padding: 3px 8px;
+}
+.canvas-clearscreen-btn {
+  margin-left: 12px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: #e53e3e;
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.canvas-clearscreen-btn:hover {
+  background: #b91c1c;
+}
+.canvas-deleteroom-btn {
+  margin-left: 12px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: #b60000;
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+.canvas-deleteroom-btn:hover {
+  background: #e53e3e;
+}
+
