@@ -1,5 +1,8 @@
 import React, { createContext, useEffect, useRef, useState, useCallback } from "react";
 
+// Get WebSocket URL from environment variable (falls back to localhost if not set)
+const WS_URL = process.env.REACT_APP_WS_URL || "ws://localhost:8000";
+
 // Context for sharing websocket state and actions across the app
 export const WebSocketContext = createContext(null);
 
@@ -113,8 +116,8 @@ export const WebSocketProvider = ({ roomId, children }) => {
       return;
     }
 
-    // TODO: Change wsUrl to wss:// when using HTTPS in production/deployment
-    const wsUrl = `ws://localhost:8000/ws/${roomId}?token=${token}`;
+    // Use environment variable for WebSocket URL
+    const wsUrl = `${WS_URL}/ws/${roomId}?token=${token}`;
     console.log(`Connecting to ${wsUrl} (Attempt ${reconnectAttemptsRef.current + 1})`);
 
     try {
