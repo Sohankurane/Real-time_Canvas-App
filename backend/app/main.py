@@ -7,8 +7,10 @@ from app.core.security import verify_token
 from app.models import user
 from sqlalchemy.future import select
 
+
 app = FastAPI()
 manager = ConnectionManager()
+
 
 origins = [
     "http://localhost:3000",
@@ -22,14 +24,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.on_event("startup")
 async def on_startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+
 @app.get("/")
 async def root():
     return {"message": "Collaborative Canvas Backend is running"}
+
 
 # --- WEBSOCKET ENDPOINT WITH USERNAME (JWT) EXTRACTION ---
 @app.websocket("/ws/{room_id}")
@@ -49,6 +54,7 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str = Path(...)):
         await websocket.close(code=4003)
         return
 
+
     await manager.connect(websocket, room_id)
     try:
         while True:
@@ -58,10 +64,13 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str = Path(...)):
         manager.disconnect(websocket, room_id)
 # ---------------------------------------------------------
 
+
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
 SessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
 
 @app.get('/rooms')
 async def list_rooms():
@@ -70,6 +79,7 @@ async def list_rooms():
         rooms = result.fetchall()
         room_objs = [{"name": row.name, "admin_username": row.admin_username} for row in rooms]
         return {"rooms": room_objs}
+
 
 @app.post('/rooms')
 async def create_room(request: Request):
@@ -87,15 +97,17 @@ async def create_room(request: Request):
     except Exception:
         return JSONResponse({"detail": "Invalid token"}, status_code=401)
 
+
     data = await request.json()
     room_name = data.get("room")
-    # Enforce uniqueness and always create room row in DB
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(select(Room).where(Room.name == room_name))
-        if result.scalars().first():
-            return JSONResponse({"detail": "Room already exists"}, status_code=400)
-    await manager.create_room_admin(room_name, username)
+    
+    # ONLY CHANGE: Use manager's return value instead of duplicate DB check
+    success = await manager.create_room_admin(room_name, username)
+    if not success:
+        return JSONResponse({"detail": "Room already exists"}, status_code=400)
+    
     return {"success": True, "room": room_name, "admin": username}
+
 
 @app.delete('/rooms/{room_name}')
 async def delete_room(room_name: str, request: Request):
@@ -113,6 +125,7 @@ async def delete_room(room_name: str, request: Request):
     except Exception:
         return JSONResponse({"detail": "Invalid token"}, status_code=401)
 
+
     async with SessionLocal() as session:
         result = await session.execute(Room.__table__.select().where(Room.name == room_name))
         room = result.first()
@@ -129,6 +142,7 @@ async def delete_room(room_name: str, request: Request):
         await session.commit()
     await manager.delete_room(room_name)
     return {"success": True, "detail": "Room deleted"}
+
 
 # Add your authentication routes here as usual
 from app.api.routes.auth import router as auth_router
