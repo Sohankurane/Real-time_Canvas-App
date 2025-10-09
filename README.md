@@ -137,7 +137,7 @@ MIT License (update if needed)
 | **Endpoint** | **Method** | **Purpose** | **Request Example** | **Response Example** |
 | :-- | :-- | :-- | :-- | :-- |
 | `/register` | POST | Register new user | `{ "fullname": "Sohan Kurane", "username": "Sohan1", "password": "Kurane1234" }` | `{ "access_token": "...", "token_type": "bearer" }` |
-| `/login` | POST | Authenticate user, returns JWT | `{ "username": "Anirudha", "password": "Anirudh123" }` | `{ "access_token": "...", "token_type": "bearer" }` |
+| `/login` | POST | Authenticate user, returns JWT | `{ "username": "Sohan1", "password": "Kurane123" }` | `{ "access_token": "...", "token_type": "bearer" }` |
 | `/rooms` | GET | List all available rooms | header: `Authorization: Bearer <token>` | `{ "rooms": [ { "name": "Room1", "admin_username": "Sohan1" }, ... ] }` |
 | `/rooms` | POST | Create room | `{ "name": "Room1" }`, header: `Authorization: Bearer <token>` | `{ "message": "Room created", ...}` |
 | `/rooms/{room_id}` | DELETE | Delete room (admin only) | header: `Authorization: Bearer <token>` | `{ "message": "Room deleted" }` |
