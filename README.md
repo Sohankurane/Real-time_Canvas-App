@@ -168,46 +168,49 @@ MIT License (update if needed)
 
 ### Database Schema
 
-```mermaid
 erDiagram
-    USER {
-      int id PK
-      string fullname
-      string username
-      string hashed_password
-    }
+USER {
+int id PK
+string fullname
+string username
+string hashed_password
+}
 
-    ROOM {
-      int id PK
-      string name UNIQUE
-      string admin_username
-    }
-    ROOM ||--|{ USER : "admin_username"
-    DRAWING_EVENT {
-      int id PK
-      float from_x
-      float from_y
-      float to_x
-      float to_y
-      string color
-      float thickness
-      string type
-      int room_id FK
-      datetime timestamp
-    }
-    ROOM ||--|{ DRAWING_EVENT : "drawing events"
-    ROOM_HISTORY {
-      int id PK
-      int room_id FK
-      text history_payload
-      datetime timestamp
-    }
-    ROOM ||--|{ ROOM_HISTORY : "has history"
-    SNAPSHOT {
-      int id PK
-      int room_id FK
-      text canvas_state
-      datetime timestamp
-    }
-    ROOM ||--|{ SNAPSHOT : "has snapshots"
-```
+text
+ROOM {
+  int id PK
+  string name UNIQUE
+  string admin_username
+}
+
+DRAWING_EVENT {
+  int id PK
+  float from_x
+  float from_y
+  float to_x
+  float to_y
+  string color
+  float thickness
+  string type
+  int room_id FK
+  datetime timestamp
+}
+
+ROOM_HISTORY {
+  int id PK
+  int room_id FK
+  text history_payload
+  datetime timestamp
+}
+
+SNAPSHOT {
+  int id PK
+  int room_id FK
+  text canvas_state
+  datetime timestamp
+}
+
+ROOM ||--o{ USER : "admin_username"
+ROOM ||--|{ DRAWING_EVENT : "has"
+ROOM ||--|{ ROOM_HISTORY : "has"
+ROOM ||--|{ SNAPSHOT : "has"
