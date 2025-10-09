@@ -1,5 +1,6 @@
-import React, { createContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useEffect, useRef, useState, useCallback } from "react";
 
+// Context for sharing websocket state and actions across the app
 export const WebSocketContext = createContext(null);
 
 // Helper to get JWT token from localStorage
@@ -7,7 +8,7 @@ function getToken() {
   return localStorage.getItem("token");
 }
 
-// Message Queue Implementation
+// In-memory message queue for reliable message delivery (disconnect tolerance)
 class MessageQueue {
   constructor() {
     this.queue = [];
@@ -46,7 +47,8 @@ class MessageQueue {
   }
 }
 
-// Usage: <WebSocketProvider roomId={roomId}>...</WebSocketProvider>
+// Provider component for managing websocket lifecycle and message queue,
+// reconnection, authentication, and context distribution.
 export const WebSocketProvider = ({ roomId, children }) => {
   const wsRef = useRef(null);
   const [wsStatus, setWsStatus] = useState("disconnected");
@@ -56,25 +58,23 @@ export const WebSocketProvider = ({ roomId, children }) => {
   const maxReconnectAttempts = 5;
   const baseReconnectDelay = 2000; // 2 seconds base delay
 
-  // Calculate exponential backoff delay
-  const getReconnectDelay = (attempt) => {
-    return Math.min(baseReconnectDelay * Math.pow(2, attempt), 30000); // Max 30 seconds
-  };
+  // Calculate exponential backoff delay for reconnect attempts
+  const getReconnectDelay = (attempt) => (
+    Math.min(baseReconnectDelay * Math.pow(2, attempt), 30000)
+  ); // max 30 seconds
 
-  // Flush queued messages when connection is established
+  // Try to send all queued messages on connection (flush)
   const flushMessageQueue = () => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       const queueSize = messageQueueRef.current.size();
       if (queueSize > 0) {
         console.log(`Flushing ${queueSize} queued messages`);
-        
         while (!messageQueueRef.current.isEmpty()) {
           const item = messageQueueRef.current.dequeue();
           try {
             wsRef.current.send(item.message);
           } catch (error) {
             console.error('Failed to send queued message:', error);
-            // If send fails, stop flushing
             break;
           }
         }
@@ -82,10 +82,9 @@ export const WebSocketProvider = ({ roomId, children }) => {
     }
   };
 
-  // Send message with automatic queuing if disconnected
+  // Send a message; queue if socket is not open
   const sendMessage = (message) => {
     const msgString = typeof message === 'string' ? message : JSON.stringify(message);
-    
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       try {
         wsRef.current.send(msgString);
@@ -99,8 +98,9 @@ export const WebSocketProvider = ({ roomId, children }) => {
     }
   };
 
-  // Main connection function with reconnection logic
-  function connect() {
+  // Connects and manages authentication & reconnection.
+  // Called automatically and upon reconnect.
+  const connect = useCallback(() => {
     if (!roomId) {
       console.warn('No roomId provided');
       return;
@@ -113,6 +113,7 @@ export const WebSocketProvider = ({ roomId, children }) => {
       return;
     }
 
+    // TODO: Change wsUrl to wss:// when using HTTPS in production/deployment
     const wsUrl = `ws://localhost:8000/ws/${roomId}?token=${token}`;
     console.log(`Connecting to ${wsUrl} (Attempt ${reconnectAttemptsRef.current + 1})`);
 
@@ -124,9 +125,7 @@ export const WebSocketProvider = ({ roomId, children }) => {
       socket.onopen = () => {
         console.log('WebSocket connected successfully');
         setWsStatus("connected");
-        reconnectAttemptsRef.current = 0; // Reset reconnect attempts on success
-        
-        // Flush any queued messages
+        reconnectAttemptsRef.current = 0; // Reset on success
         setTimeout(() => flushMessageQueue(), 100);
       };
 
@@ -135,21 +134,19 @@ export const WebSocketProvider = ({ roomId, children }) => {
         setWsStatus("disconnected");
         wsRef.current = null;
 
-        // Attempt reconnection with exponential backoff
+        // Exponential backoff & auto-retry with cap on attempts
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           const delay = getReconnectDelay(reconnectAttemptsRef.current);
           reconnectAttemptsRef.current += 1;
-          
           console.log(`Reconnecting in ${delay}ms... (Attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`);
           setWsStatus("reconnecting");
-          
           reconnectTimeoutRef.current = setTimeout(() => {
             connect();
           }, delay);
         } else {
           console.error('Max reconnection attempts reached. Please refresh the page.');
           setWsStatus("error");
-          messageQueueRef.current.clear(); // Clear queue on permanent failure
+          messageQueueRef.current.clear();
         }
       };
 
@@ -157,14 +154,13 @@ export const WebSocketProvider = ({ roomId, children }) => {
         console.error('WebSocket error occurred:', error);
         setWsStatus("error");
       };
-
     } catch (error) {
       console.error('Failed to create WebSocket:', error);
       setWsStatus("error");
     }
-  }
+  }, [roomId]); // Only change on roomId
 
-  // Manual reconnect function (can be called from UI)
+  // Manual reconnect for use from UI
   const reconnect = () => {
     console.log('Manual reconnection requested');
     reconnectAttemptsRef.current = 0;
@@ -177,15 +173,15 @@ export const WebSocketProvider = ({ roomId, children }) => {
     connect();
   };
 
-  // Get queue status
+  // Expose message queue size and state
   const getQueueStatus = () => ({
     size: messageQueueRef.current.size(),
     isEmpty: messageQueueRef.current.isEmpty()
   });
 
+  // Initiate websocket and cleanup on roomId change or unmount
   useEffect(() => {
     connect();
-
     return () => {
       console.log('Cleaning up WebSocket connection');
       if (reconnectTimeoutRef.current) {
@@ -197,16 +193,23 @@ export const WebSocketProvider = ({ roomId, children }) => {
       wsRef.current = null;
       setWsStatus("disconnected");
     };
-  }, [roomId]);
+    // Only re-run when connect() reference changes
+  }, [connect]);
 
+  // Distribute websocket context:
+  // - wsRef: current socket ref
+  // - wsStatus: connection status string
+  // - sendMessage: send (with queue fallback)
+  // - reconnect: manual reconnect callback
+  // - getQueueStatus: exposes queue state for UI
   return (
-    <WebSocketContext.Provider 
-      value={{ 
-        wsRef, 
-        wsStatus, 
-        sendMessage, 
-        reconnect, 
-        getQueueStatus 
+    <WebSocketContext.Provider
+      value={{
+        wsRef,
+        wsStatus,
+        sendMessage,
+        reconnect,
+        getQueueStatus
       }}
     >
       {children}

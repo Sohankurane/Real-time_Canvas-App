@@ -1,7 +1,8 @@
-import React, { useRef, useEffect, useState, useContext, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useContext, useCallback, useMemo } from 'react';
 import { WebSocketContext } from '../context/WebSocketContext';
 import './Canvas.css';
 
+// --- Configuration Constants ---
 const COLORS = ['#e53e3e', '#3182ce', '#38a169', '#f6ad55', '#2d3748', '#555'];
 const THICKNESS = [2, 4, 6, 8, 12];
 const TOOLS = [
@@ -23,7 +24,7 @@ const CURSORS = {
 const CANVAS_W = 1200;
 const CANVAS_H = 700;
 
-// Debounce helper for cursor
+// --- Utility Function: Debounce ---
 function debounce(fn, ms = 12) {
   let timeout;
   return (...args) => {
@@ -32,7 +33,9 @@ function debounce(fn, ms = 12) {
   };
 }
 
+// --- Main Canvas Component ---
 const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
+  // --- Local State and Context ---
   const canvasRef = useRef(null);
   const [drawing, setDrawing] = useState(false);
   const [lastPosition, setLastPosition] = useState({ x: null, y: null });
@@ -48,10 +51,9 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
   const { wsRef, wsStatus, sendMessage, getQueueStatus } = useContext(WebSocketContext);
   const username = user?.username;
 
-  // Clear cursors and send initial local cursor event on room change
+  // --- Helper: Clear cursors on room change & send a local event ---
   useEffect(() => {
     setCursors({});
-    // Send local cursor to others after room switch
     const canvas = canvasRef.current;
     if (!canvas || !user?.username || !sendMessage) return;
     const rect = canvas.getBoundingClientRect();
@@ -67,6 +69,7 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     });
   }, [roomId, user, sendMessage, tool]);
 
+  // --- Safe wrapper for sending WebSocket messages ---
   const safeSendWS = useCallback((obj) => {
     if (sendMessage) {
       sendMessage(obj);
@@ -75,6 +78,7 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     }
   }, [sendMessage]);
 
+  // --- Canvas coordinates relative to element size ---
   const getCanvasCoords = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     return {
@@ -83,6 +87,7 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     };
   };
 
+  // --- Drawing logic for all supported shapes ---
   const drawStroke = useCallback((stroke) => {
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
@@ -122,7 +127,7 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     }
   }, []);
 
-  // SNAPSHOT logic
+  // --- Snapshot logic for exporting/loading canvas state ---
   const exportCanvasStateJSON = () => JSON.stringify(shapes);
   const loadCanvasFromSnapshot = useCallback((snapshotJSON) => {
     const snap = JSON.parse(snapshotJSON);
@@ -134,6 +139,7 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     }
   }, [drawStroke]);
 
+  // --- Handlers for saving and restoring snapshots ---
   const handleSaveSnapshot = () => {
     if (savingSnapshot) return;
     setSavingSnapshot(true);
@@ -158,7 +164,7 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     });
   };
 
-  // User presence + drawing helpers
+  // --- Presence helpers and UI for active users ---
   const getActiveUsers = () => Object.entries(cursors)
     .filter(([id]) => id !== user?.username)
     .map(([id, c]) => ({ id, name: c.name, tool: c.tool, x: c.x, y: c.y }));
@@ -190,12 +196,14 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     );
   };
 
+  // --- Conflict detection for real-time coordination ---
   const isConflict = (x, y) => {
     return getActiveUsers().some(u =>
       u.x && u.y && Math.abs(u.x - x) < 45 && Math.abs(u.y - y) < 45
     );
   };
 
+  // --- Effect: Setup websocket for drawing/undo/cursor/messages ---
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !wsRef || !wsRef.current) return;
@@ -204,6 +212,7 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     const ctx = canvas.getContext('2d');
     ctx.lineCap = 'round';
 
+    // Websocket receive event for this canvas
     const receive = event => {
       const msg = JSON.parse(event.data);
       if (msg.type === "init" && Array.isArray(msg.history)) {
@@ -230,6 +239,14 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
           ...prev,
           [msg.userId]: { x: msg.x, y: msg.y, name: msg.name, tool: msg.tool }
         }));
+      } 
+      // NEW: catch user_left for presence removal
+      else if (msg.type === "user_left" && msg.username) {
+        setCursors(prevCursors => {
+          const newCursors = { ...prevCursors };
+          delete newCursors[msg.username];
+          return newCursors;
+        });
       }
       // SNAPSHOT EVENTS
       if (msg.type === "snapshots_history") {
@@ -247,6 +264,7 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     return () => socket && socket.removeEventListener('message', receive);
   }, [wsRef, user, drawStroke, loadCanvasFromSnapshot]);
 
+  // --- Undo handler for drawing ---
   const handleUndo = () => {
     setShapes(shapes => {
       const result = shapes.slice(0, -1);
@@ -258,6 +276,7 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     safeSendWS({ type: 'undo' });
   };
 
+  // --- Mouse event handlers for drawing and interactions ---
   const start = e => {
     const { x, y } = getCanvasCoords(e);
     if (isConflict(x, y)) {
@@ -296,18 +315,18 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     setLastPosition({ x, y });
   };
 
-  // Debounced cursor transmit function
-  const sendCursor = useCallback(
-    debounce(coords => {
-      safeSendWS({
-        type: 'cursor',
-        x: coords.x,
-        y: coords.y,
-        userId: user.username,
-        name: user.firstName || user.username,
-        tool
-      });
-    }, 24),
+  const sendCursor = useMemo(
+    () =>
+      debounce(coords => {
+        safeSendWS({
+          type: 'cursor',
+          x: coords.x,
+          y: coords.y,
+          userId: user.username,
+          name: user.firstName || user.username,
+          tool
+        });
+      }, 24),
     [safeSendWS, user, tool]
   );
 
@@ -418,11 +437,8 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
       ) : null
     );
 
-  // Get queue status if available
   const queueStatus = getQueueStatus ? getQueueStatus() : { size: 0, isEmpty: true };
-
-  // Enhanced status color for reconnecting state
-  const statusColor = wsStatus === 'connected' ? 'limegreen' : 
+  const statusColor = wsStatus === 'connected' ? 'limegreen' :
                       wsStatus === 'reconnecting' ? 'orange' :
                       wsStatus === 'connecting' ? 'gold' :
                       wsStatus === 'error' ? 'red' : '#888';
@@ -430,17 +446,16 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
       {renderActiveUsersBar()}
-      {/* Enhanced connection status with queue info */}
       <div style={{
         marginBottom: 8,
         fontWeight: 'bold',
         color: statusColor,
         fontSize: 15
       }}>
-        Connection: {wsStatus === 'reconnecting' ? 'Reconnecting...' : 
+        Connection: {wsStatus === 'reconnecting' ? 'Reconnecting...' :
                       wsStatus === 'no_auth' ? 'Not Authenticated' :
                       wsStatus.charAt(0).toUpperCase() + wsStatus.slice(1)}
-        {queueStatus && queueStatus.size > 0 && 
+        {queueStatus && queueStatus.size > 0 &&
           <span style={{ marginLeft: 8, fontSize: 13, color: '#666' }}>
             ({queueStatus.size} message{queueStatus.size !== 1 ? 's' : ''} queued)
           </span>
@@ -452,6 +467,8 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
           {adminUsername && `(Admin: ${adminUsername})`}
         </span>
       </div>
+
+      {/* Toolbar */}
       <div className="canvas-toolbar">
         <span style={{ fontSize: 14 }}>Tool</span>
         <select
@@ -500,9 +517,7 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
             ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
             setShapes([]);
           }}
-        >
-          Clear Screen
-        </button>
+        >Clear Screen</button>
         <button onClick={handleSaveSnapshot} disabled={savingSnapshot} style={{ margin: '0 8px', borderRadius: 6, opacity: savingSnapshot ? 0.6 : 1 }}>
           💾 {savingSnapshot ? "Saving..." : "Save Snapshot"}
         </button>
@@ -523,9 +538,7 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
               cursor: 'pointer'
             }}
             onClick={onSwitchRoom}
-          >
-            Switch Room
-          </button>
+          >Switch Room</button>
         }
         {user?.username === adminUsername && (
           <button
@@ -543,9 +556,7 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
             onClick={() => {
               safeSendWS({ type: "delete_room" });
             }}
-          >
-            Delete Room
-          </button>
+          >Delete Room</button>
         )}
       </div>
       {showSnapshots && (
