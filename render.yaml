@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: collaborative-canvas-backend
+    env: python
+    region: oregon
+    buildCommand: "cd backend && pip install -r requirements.txt"
+    startCommand: "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: collaborative-canvas-db
+          property: connectionString
+
+databases:
+  - name: collaborative-canvas-db
+    plan: free
+    databaseName: canvasdb
+    user: canvasuser
