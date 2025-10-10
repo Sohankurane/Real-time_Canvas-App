@@ -9,7 +9,7 @@ from sqlalchemy.sql import func
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:Sohan@localhost:5432/canvasdb")
 
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(DATABASE_URL, echo=False)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
 

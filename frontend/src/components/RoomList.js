@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import "./RoomList.css";
 
+// Get API URL from environment variable (falls back to localhost if not set)
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
 function RoomList({ user, onJoinRoom }) {
   const [rooms, setRooms] = useState([]);
   const [newRoom, setNewRoom] = useState("");
@@ -8,7 +11,7 @@ function RoomList({ user, onJoinRoom }) {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:8000/rooms", {
+    fetch(`${API_URL}/rooms`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
@@ -28,7 +31,7 @@ function RoomList({ user, onJoinRoom }) {
     }
     setError("");
     try {
-      const resp = await fetch("http://localhost:8000/rooms", {
+      const resp = await fetch(`${API_URL}/rooms`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -54,7 +57,7 @@ function RoomList({ user, onJoinRoom }) {
   const handleDeleteRoom = async (roomName) => {
     if (!window.confirm(`Are you sure you want to delete room "${roomName}"?`)) return;
     try {
-      const resp = await fetch(`http://localhost:8000/rooms/${roomName}`, {
+      const resp = await fetch(`${API_URL}/rooms/${roomName}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -83,13 +86,12 @@ function RoomList({ user, onJoinRoom }) {
       {error && <div className="error-message">{error}</div>}
       {success && <div className="success-message">{success}</div>}
 
-      <ul className="roomlist-list" role="list">
+      <ul className="roomlist-list">
         {rooms.map(({ name, admin_username }) => (
           <li
             key={name}
             className={`roomlist-item ${admin_username === user.username ? "admin-room" : ""}`}
             tabIndex={0}
-            role="listitem"
           >
             <div>
               <span className="roomlist-room">{name}</span>

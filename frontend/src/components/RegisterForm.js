@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import './LoginForm.css';
 
+// Get API URL from environment variable (falls back to localhost if not set)
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
 const RegisterForm = ({ onSuccess, onSwitch }) => {
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
@@ -13,7 +16,7 @@ const RegisterForm = ({ onSuccess, onSwitch }) => {
     setError('');
     setSuccess('');
     try {
-      const res = await fetch('http://localhost:8000/register', {
+      const res = await fetch(`${API_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ full_name: fullName, username, password })
