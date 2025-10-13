@@ -182,7 +182,7 @@ erDiagram
       string name UNIQUE
       string admin_username
     }
-    ROOM ||--|{ USER : "admin_username"
+
     DRAWING_EVENT {
       int id PK
       float from_x
@@ -195,19 +195,24 @@ erDiagram
       int room_id FK
       datetime timestamp
     }
-    ROOM ||--|{ DRAWING_EVENT : "drawing events"
+
     ROOM_HISTORY {
       int id PK
       int room_id FK
       text history_payload
       datetime timestamp
     }
-    ROOM ||--|{ ROOM_HISTORY : "has history"
+
     SNAPSHOT {
       int id PK
-      int room_id FK
+      string room_id FK
       text canvas_state
       datetime timestamp
     }
-    ROOM ||--|{ SNAPSHOT : "has snapshots"
+
+    USER ||--o{ ROOM : "creates"
+    ROOM ||--|{ DRAWING_EVENT : "contains"
+    ROOM ||--|{ ROOM_HISTORY : "has"
+    ROOM ||--|{ SNAPSHOT : "has"
+
 ```
