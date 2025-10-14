@@ -66,8 +66,7 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str = Path(...)):
             data = await websocket.receive_text()
             await manager.broadcast(data, room_id, username=username)
     except WebSocketDisconnect:
-        manager.disconnect(websocket, room_id)
-
+        await manager.disconnect(websocket, room_id)
 
 @app.get('/rooms')
 async def list_rooms():
