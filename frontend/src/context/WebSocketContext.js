@@ -112,10 +112,20 @@ export const WebSocketProvider = ({ roomId, children }) => {
       setWsStatus("no_auth");
       return;
     }
+// Dynamically determine WebSocket URL based on environment
+const getWebSocketUrl = () => {
+  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+  
+  // Replace http:// or https:// with ws:// or wss://
+  const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws';
+  const baseUrl = apiUrl.replace(/^https?:\/\//, '');
+  
+  return `${wsProtocol}://${baseUrl}/ws/${roomId}?token=${token}`;
+};
 
-    // TODO: Change wsUrl to wss:// when using HTTPS in production/deployment
-    const wsUrl = `ws://localhost:8000/ws/${roomId}?token=${token}`;
-    console.log(`Connecting to ${wsUrl} (Attempt ${reconnectAttemptsRef.current + 1})`);
+const wsUrl = getWebSocketUrl();
+console.log(`Connecting to ${wsUrl} (Attempt ${reconnectAttemptsRef.current + 1})`);
+
 
     try {
       const socket = new WebSocket(wsUrl);
