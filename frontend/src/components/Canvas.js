@@ -1,8 +1,10 @@
 import React, { useRef, useEffect, useState, useContext, useCallback, useMemo } from 'react';
 import { WebSocketContext } from '../context/WebSocketContext';
+import ChatBox from './ChatBox';
+import VideoCall from './VideoCall';
+import LiveCaptions from './LiveCaptions';
 import './Canvas.css';
 
-// --- Configuration Constants ---
 const COLORS = ['#e53e3e', '#3182ce', '#38a169', '#f6ad55', '#2d3748', '#555'];
 const THICKNESS = [2, 4, 6, 8, 12];
 const TOOLS = [
@@ -24,7 +26,6 @@ const CURSORS = {
 const CANVAS_W = 1200;
 const CANVAS_H = 700;
 
-// --- Utility Function: Debounce ---
 function debounce(fn, ms = 12) {
   let timeout;
   return (...args) => {
@@ -33,9 +34,7 @@ function debounce(fn, ms = 12) {
   };
 }
 
-// --- Main Canvas Component ---
 const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
-  // --- Local State and Context ---
   const canvasRef = useRef(null);
   const [drawing, setDrawing] = useState(false);
   const [lastPosition, setLastPosition] = useState({ x: null, y: null });
@@ -48,10 +47,11 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
   const [snapshots, setSnapshots] = useState([]);
   const [showSnapshots, setShowSnapshots] = useState(false);
   const [savingSnapshot, setSavingSnapshot] = useState(false);
-  const { wsRef, wsStatus, sendMessage, getQueueStatus } = useContext(WebSocketContext);
+  
+  // ✅ FIXED: Get lastMessage from context instead of wsRef
+  const { wsRef, wsStatus, lastMessage, sendMessage, getQueueStatus } = useContext(WebSocketContext);
   const username = user?.username;
 
-  // --- Helper: Clear cursors on room change & send a local event ---
   useEffect(() => {
     setCursors({});
     const canvas = canvasRef.current;
@@ -59,26 +59,24 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     const rect = canvas.getBoundingClientRect();
     const x = Math.round(rect.width / 2);
     const y = Math.round(rect.height / 2);
-    sendMessage({
+    sendMessage(JSON.stringify({
       type: 'cursor',
       x,
       y,
       userId: user.username,
       name: user.firstName || user.username,
       tool
-    });
+    }));
   }, [roomId, user, sendMessage, tool]);
 
-  // --- Safe wrapper for sending WebSocket messages ---
   const safeSendWS = useCallback((obj) => {
     if (sendMessage) {
-      sendMessage(obj);
+      sendMessage(JSON.stringify(obj));
     } else {
       console.warn('sendMessage not available from context');
     }
   }, [sendMessage]);
 
-  // --- Canvas coordinates relative to element size ---
   const getCanvasCoords = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     return {
@@ -87,7 +85,6 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     };
   };
 
-  // --- Drawing logic for all supported shapes ---
   const drawStroke = useCallback((stroke) => {
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
@@ -127,8 +124,8 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     }
   }, []);
 
-  // --- Snapshot logic for exporting/loading canvas state ---
   const exportCanvasStateJSON = () => JSON.stringify(shapes);
+  
   const loadCanvasFromSnapshot = useCallback((snapshotJSON) => {
     const snap = JSON.parse(snapshotJSON);
     setShapes(snap);
@@ -139,7 +136,6 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     }
   }, [drawStroke]);
 
-  // --- Handlers for saving and restoring snapshots ---
   const handleSaveSnapshot = () => {
     if (savingSnapshot) return;
     setSavingSnapshot(true);
@@ -164,7 +160,6 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     });
   };
 
-  // --- Presence helpers and UI for active users ---
   const getActiveUsers = () => Object.entries(cursors)
     .filter(([id]) => id !== user?.username)
     .map(([id, c]) => ({ id, name: c.name, tool: c.tool, x: c.x, y: c.y }));
@@ -196,75 +191,75 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     );
   };
 
-  // --- Conflict detection for real-time coordination ---
   const isConflict = (x, y) => {
     return getActiveUsers().some(u =>
       u.x && u.y && Math.abs(u.x - x) < 45 && Math.abs(u.y - y) < 45
     );
   };
 
-  // --- Effect: Setup websocket for drawing/undo/cursor/messages ---
+  // ✅ FIXED: Initialize canvas once on mount
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !wsRef || !wsRef.current) return;
+    if (!canvas) return;
     canvas.width = CANVAS_W;
     canvas.height = CANVAS_H;
     const ctx = canvas.getContext('2d');
     ctx.lineCap = 'round';
+  }, []);
 
-    // Websocket receive event for this canvas
-    const receive = event => {
-      const msg = JSON.parse(event.data);
-      if (msg.type === "init" && Array.isArray(msg.history)) {
-        msg.history.forEach(drawStroke);
-      } else if (
-        ['draw', 'brush', 'eraser', 'rectangle', 'ellipse', 'text'].includes(msg.type)
-      ) {
-        drawStroke(msg);
-        setShapes(shapes => [...shapes, msg]);
-      } else if (msg.type === "undo") {
-        setShapes(shapes => {
-          const result = shapes.slice(0, -1);
-          ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-          result.forEach(drawStroke);
-          return result;
-        });
-      }
-      else if (msg.type === "clear") {
-        setShapes([]);
+  // ✅ FIXED: Handle messages via lastMessage from context
+  useEffect(() => {
+    if (!lastMessage) return;
+    
+    let msg;
+    try {
+      msg = JSON.parse(lastMessage);
+    } catch (err) {
+      console.error('Failed to parse message:', err);
+      return;
+    }
+
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+
+    if (msg.type === "init" && Array.isArray(msg.history)) {
+      msg.history.forEach(drawStroke);
+    } else if (
+      ['draw', 'brush', 'eraser', 'rectangle', 'ellipse', 'text'].includes(msg.type)
+    ) {
+      drawStroke(msg);
+      setShapes(shapes => [...shapes, msg]);
+    } else if (msg.type === "undo") {
+      setShapes(shapes => {
+        const result = shapes.slice(0, -1);
         ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-      }
-      else if (msg.type === "cursor" && msg.userId && msg.x != null && msg.y != null) {
-        setCursors(prev => ({
-          ...prev,
-          [msg.userId]: { x: msg.x, y: msg.y, name: msg.name, tool: msg.tool }
-        }));
-      } 
-      // NEW: catch user_left for presence removal
-      else if (msg.type === "user_left" && msg.username) {
-        setCursors(prevCursors => {
-          const newCursors = { ...prevCursors };
-          delete newCursors[msg.username];
-          return newCursors;
-        });
-      }
-      // SNAPSHOT EVENTS
-      if (msg.type === "snapshots_history") {
-        setSnapshots(msg.snapshots || []);
-      }
-      if (msg.type === "snapshot_restored") {
-        loadCanvasFromSnapshot(msg.snapshot_data);
-        alert(`Snapshot restored by ${msg.restored_by}`);
-        setShowSnapshots(false);
-      }
-    };
+        result.forEach(drawStroke);
+        return result;
+      });
+    } else if (msg.type === "clear") {
+      setShapes([]);
+      ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    } else if (msg.type === "cursor" && msg.userId && msg.x != null && msg.y != null) {
+      setCursors(prev => ({
+        ...prev,
+        [msg.userId]: { x: msg.x, y: msg.y, name: msg.name, tool: msg.tool }
+      }));
+    } else if (msg.type === "user_left" && msg.username) {
+      setCursors(prevCursors => {
+        const newCursors = { ...prevCursors };
+        delete newCursors[msg.username];
+        return newCursors;
+      });
+    } else if (msg.type === "snapshots_history") {
+      setSnapshots(msg.snapshots || []);
+    } else if (msg.type === "snapshot_restored") {
+      loadCanvasFromSnapshot(msg.snapshot_data);
+      alert(`Snapshot restored by ${msg.restored_by}`);
+      setShowSnapshots(false);
+    }
+    // Canvas ignores WebRTC/chat messages - handled by child components
+  }, [lastMessage, drawStroke, loadCanvasFromSnapshot]);
 
-    const socket = wsRef.current;
-    socket.addEventListener('message', receive);
-    return () => socket && socket.removeEventListener('message', receive);
-  }, [wsRef, user, drawStroke, loadCanvasFromSnapshot]);
-
-  // --- Undo handler for drawing ---
   const handleUndo = () => {
     setShapes(shapes => {
       const result = shapes.slice(0, -1);
@@ -276,7 +271,6 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
     safeSendWS({ type: 'undo' });
   };
 
-  // --- Mouse event handlers for drawing and interactions ---
   const start = e => {
     const { x, y } = getCanvasCoords(e);
     if (isConflict(x, y)) {
@@ -595,6 +589,10 @@ const Canvas = ({ user, roomId, adminUsername, onSwitchRoom }) => {
         />
         {renderUserClaims()}
         {renderOtherCursors()}
+        {/* New features overlayed: Chat, Video, Captions */}
+        <ChatBox roomId={roomId} username={user.username} />
+        <VideoCall roomId={roomId} username={user.username} />
+        <LiveCaptions username={user.username} isEnabled={true} />
       </div>
     </div>
   );

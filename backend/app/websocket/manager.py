@@ -1,8 +1,9 @@
 from typing import Dict, List
 from fastapi import WebSocket
 import json
-from app.database import AsyncSessionLocal, RoomHistory, Room, Snapshot
+from app.database import AsyncSessionLocal, RoomHistory, Room, Snapshot, ChatMessage
 from sqlalchemy.future import select
+from datetime import datetime
 
 MAX_HISTORY = 500  # Cap history per room for performance
 
@@ -11,18 +12,16 @@ class ConnectionManager:
         self.active_connections: Dict[str, List[WebSocket]] = {}
         self.history: Dict[str, List[str]] = {}
         self.rooms: set = set()
-        # Optionally, track usernames per websocket:
         self.socket_user_map: Dict[WebSocket, str] = {}
 
     async def connect(self, websocket: WebSocket, room_id: str, username: str = None):
-        """Accept WebSocket connection and send initial canvas state"""
         await websocket.accept()
         if room_id not in self.active_connections:
             self.active_connections[room_id] = []
         self.active_connections[room_id].append(websocket)
         self.rooms.add(room_id)
         if username:
-            self.socket_user_map[websocket] = username  # Track user
+            self.socket_user_map[websocket] = username
 
         # Load room history from database if not in memory
         if room_id not in self.history:
@@ -39,20 +38,19 @@ class ConnectionManager:
             )
 
     async def disconnect(self, websocket: WebSocket, room_id: str):
-        """Remove WebSocket connection from active connections and broadcast user_left"""
         username = self.socket_user_map.pop(websocket, None)
         if (
             room_id in self.active_connections and
             websocket in self.active_connections[room_id]
         ):
             self.active_connections[room_id].remove(websocket)
-            # Immediately tell others to remove this user's cursor
             if username:
                 await self.broadcast(
                     json.dumps({"type": "user_left", "username": username}),
                     room_id
                 )
-            if not self.active_connections[room_id]:
+            # 🔴 FIX: Check if room_id exists before checking if empty
+            if room_id in self.active_connections and not self.active_connections[room_id]:
                 del self.active_connections[room_id]
 
     async def send_personal_message(self, message: str, websocket: WebSocket):
@@ -89,13 +87,22 @@ class ConnectionManager:
             print(f"Error loading room history: {e}")
             self.history[room_id] = []
 
-    async def broadcast(self, message: str, room_id: str, username: str = None):
+    async def broadcast(self, message: str, room_id: str, username: str = None, sender_ws: WebSocket = None):
         try:
             event = json.loads(message)
             event_type = event.get('type')
         except Exception as e:
             print(f"Error parsing message: {e}")
             event_type = None
+
+        # CHAT: Save chat message to DB
+        if event_type == "chat":
+            await self.save_chat_message(
+                room_id,
+                event.get("username"),
+                event.get("message"),
+                event.get("timestamp")
+            )
 
         if event_type == "clear":
             is_admin = await self.is_admin(room_id, username)
@@ -127,7 +134,7 @@ class ConnectionManager:
                         pass
             return
 
-        elif event_type not in ("cursor", "undo"):
+        elif event_type not in ("cursor", "undo", "chat"):
             self.history.setdefault(room_id, []).append(message)
             if len(self.history[room_id]) > MAX_HISTORY:
                 self.history[room_id] = self.history[room_id][-MAX_HISTORY:]
@@ -176,6 +183,11 @@ class ConnectionManager:
 
         disconnected = []
         for connection in self.active_connections.get(room_id, []):
+            # Skip sender ONLY for WebRTC signaling (not for chat)
+            if sender_ws and connection == sender_ws and event_type in (
+                "webrtc-offer", "webrtc-answer", "webrtc-candidate"
+            ):
+                continue
             try:
                 await connection.send_text(message)
             except Exception as e:
@@ -183,6 +195,28 @@ class ConnectionManager:
                 disconnected.append(connection)
         for conn in disconnected:
             await self.disconnect(conn, room_id)
+
+    # Save chat messages to database with timestamp conversion
+    async def save_chat_message(self, room_id, username, message, timestamp):
+        try:
+            # Convert ISO string to Python datetime before saving
+            if isinstance(timestamp, str):
+                # Handle Z, +00:00, etc for UTC ISO format
+                if timestamp.endswith('Z'):
+                    timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                else:
+                    timestamp = datetime.fromisoformat(timestamp)
+            async with AsyncSessionLocal() as session:
+                chat_msg = ChatMessage(
+                    room_id=room_id,
+                    username=username,
+                    message=message,
+                    timestamp=timestamp
+                )
+                session.add(chat_msg)
+                await session.commit()
+        except Exception as e:
+            print(f"Error saving chat message: {e}")
 
     def list_rooms(self):
         return list(self.rooms)
@@ -218,6 +252,9 @@ class ConnectionManager:
                 )
                 await session.execute(
                     Snapshot.__table__.delete().where(Snapshot.room_id == room_id)
+                )
+                await session.execute(
+                    ChatMessage.__table__.delete().where(ChatMessage.room_id == room_id)
                 )
                 await session.commit()
         except Exception as e:

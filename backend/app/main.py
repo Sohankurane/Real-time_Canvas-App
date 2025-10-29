@@ -6,10 +6,8 @@ from app.database import engine, Base, Room, Snapshot, AsyncSessionLocal
 from app.core.security import verify_token
 import os
 
-
 app = FastAPI()
 manager = ConnectionManager()
-
 
 # CORS with environment variable support
 origins = [
@@ -19,7 +17,6 @@ origins = [
 ]
 origins = [origin for origin in origins if origin]  # Remove empty strings
 
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -28,17 +25,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.on_event("startup")
 async def on_startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-
 @app.get("/")
 async def root():
     return {"message": "Collaborative Canvas Backend is running"}
-
 
 # --- WEBSOCKET ENDPOINT WITH USERNAME (JWT) EXTRACTION ---
 @app.websocket("/ws/{room_id}")
@@ -59,15 +53,27 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str = Path(...)):
         await websocket.close(code=4003)
         return
 
-    await manager.connect(websocket, room_id)
+    # Pass username (for chat, AV, captions) to connection
+    await manager.connect(websocket, room_id, username=username)
     
     try:
         while True:
             data = await websocket.receive_text()
-            await manager.broadcast(data, room_id, username=username)
+            # THE FIX: propagate signaling to all except sender for WebRTC
+            await manager.broadcast(data, room_id, username=username, sender_ws=websocket)
     except WebSocketDisconnect:
-        manager.disconnect(websocket, room_id)
-
+        # 🔴 FIX: Wrap disconnect in try-except to handle broadcast failures
+        try:
+            await manager.disconnect(websocket, room_id)
+        except Exception as e:
+            print(f"Error during disconnect cleanup: {e}")
+    except Exception as e:
+        # 🔴 FIX: Catch any other exceptions and clean up gracefully
+        print(f"Unexpected WebSocket error: {e}")
+        try:
+            await manager.disconnect(websocket, room_id)
+        except Exception as disconnect_error:
+            print(f"Error during error-state disconnect: {disconnect_error}")
 
 @app.get('/rooms')
 async def list_rooms():
@@ -76,7 +82,6 @@ async def list_rooms():
         rooms = result.fetchall()
         room_objs = [{"name": row.name, "admin_username": row.admin_username} for row in rooms]
         return {"rooms": room_objs}
-
 
 @app.post('/rooms', status_code=status.HTTP_201_CREATED)
 async def create_room(request: Request):
@@ -97,14 +102,12 @@ async def create_room(request: Request):
 
     data = await request.json()
     room_name = data.get("room")
-    
     # Use manager's return value instead of duplicate DB check
     success = await manager.create_room_admin(room_name, username)
     if not success:
         return JSONResponse({"detail": "Room already exists"}, status_code=400)
     
     return {"success": True, "room": room_name, "admin": username}
-
 
 @app.delete('/rooms/{room_name}')
 async def delete_room(room_name: str, request: Request):
@@ -142,7 +145,6 @@ async def delete_room(room_name: str, request: Request):
     
     await manager.delete_room(room_name)
     return {"success": True, "detail": "Room deleted"}
-
 
 # Include auth routes
 from app.api.routes.auth import router as auth_router

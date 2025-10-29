@@ -52,6 +52,7 @@ class MessageQueue {
 export const WebSocketProvider = ({ roomId, children }) => {
   const wsRef = useRef(null);
   const [wsStatus, setWsStatus] = useState("disconnected");
+  const [lastMessage, setLastMessage] = useState(null);
   const reconnectTimeoutRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
   const messageQueueRef = useRef(new MessageQueue());
@@ -64,7 +65,7 @@ export const WebSocketProvider = ({ roomId, children }) => {
   ); // max 30 seconds
 
   // Try to send all queued messages on connection (flush)
-  const flushMessageQueue = () => {
+  const flushMessageQueue = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       const queueSize = messageQueueRef.current.size();
       if (queueSize > 0) {
@@ -80,10 +81,10 @@ export const WebSocketProvider = ({ roomId, children }) => {
         }
       }
     }
-  };
+  }, []);
 
   // Send a message; queue if socket is not open
-  const sendMessage = (message) => {
+  const sendMessage = useCallback((message) => {
     const msgString = typeof message === 'string' ? message : JSON.stringify(message);
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       try {
@@ -96,10 +97,9 @@ export const WebSocketProvider = ({ roomId, children }) => {
       console.log('WebSocket not ready, queuing message');
       messageQueueRef.current.enqueue(msgString);
     }
-  };
+  }, []);
 
   // Connects and manages authentication & reconnection.
-  // Called automatically and upon reconnect.
   const connect = useCallback(() => {
     if (!roomId) {
       console.warn('No roomId provided');
@@ -113,8 +113,18 @@ export const WebSocketProvider = ({ roomId, children }) => {
       return;
     }
 
-    // TODO: Change wsUrl to wss:// when using HTTPS in production/deployment
-    const wsUrl = `ws://localhost:8000/ws/${roomId}?token=${token}`;
+    // Dynamically determine WebSocket URL based on environment
+    const getWebSocketUrl = () => {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+      
+      // Replace http:// or https:// with ws:// or wss://
+      const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws';
+      const baseUrl = apiUrl.replace(/^https?:\/\//, '');
+      
+      return `${wsProtocol}://${baseUrl}/ws/${roomId}?token=${token}`;
+    };
+
+    const wsUrl = getWebSocketUrl();
     console.log(`Connecting to ${wsUrl} (Attempt ${reconnectAttemptsRef.current + 1})`);
 
     try {
@@ -127,6 +137,11 @@ export const WebSocketProvider = ({ roomId, children }) => {
         setWsStatus("connected");
         reconnectAttemptsRef.current = 0; // Reset on success
         setTimeout(() => flushMessageQueue(), 100);
+      };
+
+      // ✅ FIXED: Centralized message handler - updates lastMessage state
+      socket.onmessage = (event) => {
+        setLastMessage(event.data);
       };
 
       socket.onclose = (event) => {
@@ -158,10 +173,10 @@ export const WebSocketProvider = ({ roomId, children }) => {
       console.error('Failed to create WebSocket:', error);
       setWsStatus("error");
     }
-  }, [roomId]); // Only change on roomId
+  }, [roomId, flushMessageQueue]);
 
   // Manual reconnect for use from UI
-  const reconnect = () => {
+  const reconnect = useCallback(() => {
     console.log('Manual reconnection requested');
     reconnectAttemptsRef.current = 0;
     if (reconnectTimeoutRef.current) {
@@ -171,13 +186,13 @@ export const WebSocketProvider = ({ roomId, children }) => {
       wsRef.current.close();
     }
     connect();
-  };
+  }, [connect]);
 
   // Expose message queue size and state
-  const getQueueStatus = () => ({
+  const getQueueStatus = useCallback(() => ({
     size: messageQueueRef.current.size(),
     isEmpty: messageQueueRef.current.isEmpty()
-  });
+  }), []);
 
   // Initiate websocket and cleanup on roomId change or unmount
   useEffect(() => {
@@ -193,20 +208,14 @@ export const WebSocketProvider = ({ roomId, children }) => {
       wsRef.current = null;
       setWsStatus("disconnected");
     };
-    // Only re-run when connect() reference changes
   }, [connect]);
 
-  // Distribute websocket context:
-  // - wsRef: current socket ref
-  // - wsStatus: connection status string
-  // - sendMessage: send (with queue fallback)
-  // - reconnect: manual reconnect callback
-  // - getQueueStatus: exposes queue state for UI
   return (
     <WebSocketContext.Provider
       value={{
         wsRef,
         wsStatus,
+        lastMessage,
         sendMessage,
         reconnect,
         getQueueStatus
