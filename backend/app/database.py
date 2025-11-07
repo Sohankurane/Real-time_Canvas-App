@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy import Column, Integer, Float, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 
-# UPDATED LINE - reads from environment variable on Render
+# reads from environment variable on Render
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:Sohan@localhost:5432/canvasdb")
 
 engine = create_async_engine(DATABASE_URL, echo=False)

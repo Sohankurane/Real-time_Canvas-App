@@ -7,8 +7,7 @@ class MessageQueue {
     this.maxQueueSize = maxSize;
   }
 
-  // Add message to queue with timestamp
-  // Drops oldest message if queue is full
+  // Add message to queue with timestamp, Drops oldest message if queue is full
   enqueue(message) {
     if (this.queue.length >= this.maxQueueSize) {
       console.warn('Message queue full, dropping oldest message');

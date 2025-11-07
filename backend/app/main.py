@@ -59,16 +59,14 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str = Path(...)):
     try:
         while True:
             data = await websocket.receive_text()
-            # THE FIX: propagate signaling to all except sender for WebRTC
             await manager.broadcast(data, room_id, username=username, sender_ws=websocket)
     except WebSocketDisconnect:
-        # 🔴 FIX: Wrap disconnect in try-except to handle broadcast failures
+        # Wrap disconnect in try-except to handle broadcast failures
         try:
             await manager.disconnect(websocket, room_id)
         except Exception as e:
             print(f"Error during disconnect cleanup: {e}")
     except Exception as e:
-        # 🔴 FIX: Catch any other exceptions and clean up gracefully
         print(f"Unexpected WebSocket error: {e}")
         try:
             await manager.disconnect(websocket, room_id)
@@ -102,7 +100,7 @@ async def create_room(request: Request):
 
     data = await request.json()
     room_name = data.get("room")
-    # Use manager's return value instead of duplicate DB check
+    
     success = await manager.create_room_admin(room_name, username)
     if not success:
         return JSONResponse({"detail": "Room already exists"}, status_code=400)

@@ -49,7 +49,7 @@ class ConnectionManager:
                     json.dumps({"type": "user_left", "username": username}),
                     room_id
                 )
-            # 🔴 FIX: Check if room_id exists before checking if empty
+            
             if room_id in self.active_connections and not self.active_connections[room_id]:
                 del self.active_connections[room_id]
 
@@ -95,7 +95,7 @@ class ConnectionManager:
             print(f"Error parsing message: {e}")
             event_type = None
 
-        # CHAT: Save chat message to DB
+        # Save chat message to DB
         if event_type == "chat":
             await self.save_chat_message(
                 room_id,
@@ -183,7 +183,7 @@ class ConnectionManager:
 
         disconnected = []
         for connection in self.active_connections.get(room_id, []):
-            # Skip sender ONLY for WebRTC signaling (not for chat)
+            
             if sender_ws and connection == sender_ws and event_type in (
                 "webrtc-offer", "webrtc-answer", "webrtc-candidate"
             ):
@@ -199,9 +199,8 @@ class ConnectionManager:
     # Save chat messages to database with timestamp conversion
     async def save_chat_message(self, room_id, username, message, timestamp):
         try:
-            # Convert ISO string to Python datetime before saving
             if isinstance(timestamp, str):
-                # Handle Z, +00:00, etc for UTC ISO format
+                
                 if timestamp.endswith('Z'):
                     timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
                 else:

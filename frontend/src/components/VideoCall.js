@@ -127,7 +127,6 @@ const VideoCall = ({ roomId, username }) => {
     try { data = JSON.parse(lastMessage); } catch { return; }
     if (!data) return;
 
-    // 🔴 FIX: If we get a webrtc-join and we're active, send offer
     if (data.type === "webrtc-join" && data.username !== username && isCallActive) {
       const pc = setupPeerConnection(data.username);
       pc.createOffer().then(offer => {
@@ -142,9 +141,8 @@ const VideoCall = ({ roomId, username }) => {
       });
     }
     
-    // 🔴 FIX: Handle offer even if NOT active yet - auto-accept and join
+    
     if (data.type === "webrtc-offer" && data.to === username) {
-      // If we're not active, auto-start the call (passive join)
       if (!isCallActive) {
         navigator.mediaDevices.getUserMedia({video: true, audio: true})
           .then(stream => {
@@ -153,7 +151,6 @@ const VideoCall = ({ roomId, username }) => {
             setIsInvitation(false);
             setIsCallActive(true);
             
-            // Now handle the offer
             const pc = setupPeerConnection(data.from);
             return pc.setRemoteDescription(new window.RTCSessionDescription(data.offer))
               .then(() => pc.createAnswer())
@@ -182,7 +179,6 @@ const VideoCall = ({ roomId, username }) => {
             setMediaErr("Could not access camera/mic: " + err.message);
           });
       } else {
-        // We're already active, just handle the offer normally
         const pc = setupPeerConnection(data.from);
         pc.setRemoteDescription(new window.RTCSessionDescription(data.offer))
           .then(() => pc.createAnswer())

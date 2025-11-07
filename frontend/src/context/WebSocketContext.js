@@ -47,8 +47,7 @@ class MessageQueue {
   }
 }
 
-// Provider component for managing websocket lifecycle and message queue,
-// reconnection, authentication, and context distribution.
+// Provider component for managing websocket lifecycle and message queue,reconnection, authentication, and context distribution.
 export const WebSocketProvider = ({ roomId, children }) => {
   const wsRef = useRef(null);
   const [wsStatus, setWsStatus] = useState("disconnected");
@@ -117,7 +116,6 @@ export const WebSocketProvider = ({ roomId, children }) => {
     const getWebSocketUrl = () => {
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
       
-      // Replace http:// or https:// with ws:// or wss://
       const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws';
       const baseUrl = apiUrl.replace(/^https?:\/\//, '');
       
@@ -139,7 +137,7 @@ export const WebSocketProvider = ({ roomId, children }) => {
         setTimeout(() => flushMessageQueue(), 100);
       };
 
-      // ✅ FIXED: Centralized message handler - updates lastMessage state
+      // Centralized message handler - updates lastMessage state
       socket.onmessage = (event) => {
         setLastMessage(event.data);
       };
@@ -149,7 +147,7 @@ export const WebSocketProvider = ({ roomId, children }) => {
         setWsStatus("disconnected");
         wsRef.current = null;
 
-        // Exponential backoff & auto-retry with cap on attempts
+        
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           const delay = getReconnectDelay(reconnectAttemptsRef.current);
           reconnectAttemptsRef.current += 1;
@@ -175,7 +173,7 @@ export const WebSocketProvider = ({ roomId, children }) => {
     }
   }, [roomId, flushMessageQueue]);
 
-  // Manual reconnect for use from UI
+  
   const reconnect = useCallback(() => {
     console.log('Manual reconnection requested');
     reconnectAttemptsRef.current = 0;

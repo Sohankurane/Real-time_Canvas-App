@@ -168,46 +168,22 @@ MIT License (update if needed)
 
 ### Database Schema
 
-```mermaid
-erDiagram
-    USER {
-      int id PK
-      string fullname
-      string username
-      string hashed_password
-    }
+## Database Schema
 
-    ROOM {
-      int id PK
-      string name UNIQUE
-      string admin_username
-    }
-    ROOM ||--|{ USER : "admin_username"
-    DRAWING_EVENT {
-      int id PK
-      float from_x
-      float from_y
-      float to_x
-      float to_y
-      string color
-      float thickness
-      string type
-      int room_id FK
-      datetime timestamp
-    }
-    ROOM ||--|{ DRAWING_EVENT : "drawing events"
-    ROOM_HISTORY {
-      int id PK
-      int room_id FK
-      text history_payload
-      datetime timestamp
-    }
-    ROOM ||--|{ ROOM_HISTORY : "has history"
-    SNAPSHOT {
-      int id PK
-      int room_id FK
-      text canvas_state
-      datetime timestamp
-    }
-    ROOM ||--|{ SNAPSHOT : "has snapshots"
-```
+### Tables
+
+| Table | Description |
+|-------|-------------|
+| **USER** | Stores user credentials and profile |
+| **ROOM** | Collaborative drawing rooms |
+| **DRAWING_EVENT** | Individual drawing actions |
+| **ROOM_HISTORY** | Historical room events |
+| **SNAPSHOT** | Complete canvas state snapshots |
+
+### Relationships
+
+- `USER` → `ROOM` (one-to-many: one user can create many rooms)
+- `ROOM` → `DRAWING_EVENT` (one-to-many)
+- `ROOM` → `ROOM_HISTORY` (one-to-many)
+- `ROOM` → `SNAPSHOT` (one-to-many)
+

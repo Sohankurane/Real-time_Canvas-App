@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './LoginForm.css';
 
-// Get API URL from environment variable (falls back to localhost if not set)
+// Get API URL from environment variable
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 const RegisterForm = ({ onSuccess, onSwitch }) => {
