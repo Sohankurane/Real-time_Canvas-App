@@ -3,7 +3,7 @@ import { WebSocketProvider } from './context/WebSocketContext';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import RoomList from './components/RoomList';
-import Canvas from './components/Canvas'; // We'll use old Canvas for now
+import Canvas from './components/Canvas'; 
 import { VIEWS } from './constants';
 import './App.css';
 

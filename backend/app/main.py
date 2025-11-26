@@ -74,13 +74,13 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str = Path(...)):
                 await manager.broadcast(data, room_id, username=username, sender_ws=websocket)
             except WebSocketDisconnect:
                 logger.debug(f"WebSocket disconnect detected for {username} in room {room_id}")
-                break  # Exit the while loop cleanly
+                break  
             except RuntimeError as e:
                 if "WebSocket is not connected" in str(e):
                     logger.debug(f"WebSocket already closed for {username} in room {room_id}")
                     break
                 else:
-                    raise  # Re-raise other RuntimeErrors
+                    raise 
     except WebSocketDisconnect:
         logger.debug(f"WebSocket disconnected for {username} in room {room_id}")
     except RuntimeError as e:

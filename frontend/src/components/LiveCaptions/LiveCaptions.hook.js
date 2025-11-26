@@ -34,7 +34,6 @@ export const useLiveCaptions = (username, isEnabled) => {
         if (event.results[i].isFinal) {
           finalTranscript += transcript + ' ';
         }
-        // Note: We're only using final transcripts, interim results are ignored
       }
 
       if (finalTranscript) {
