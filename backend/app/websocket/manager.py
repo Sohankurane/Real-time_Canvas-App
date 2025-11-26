@@ -1,11 +1,13 @@
 from typing import Dict, List
 from fastapi import WebSocket
 import json
-from app.database import AsyncSessionLocal, RoomHistory, Room, Snapshot, ChatMessage
-from sqlalchemy.future import select
-from datetime import datetime
+from app.database import AsyncSessionLocal
+from app.services.room_service import RoomService
+from app.services.canvas_service import CanvasService
+from app.services.snapshot_service import SnapshotService
+from app.core.config import settings
+from app.core.logger import logger
 
-MAX_HISTORY = 500  # Cap history per room for performance
 
 class ConnectionManager:
     def __init__(self):
@@ -22,8 +24,9 @@ class ConnectionManager:
         self.rooms.add(room_id)
         if username:
             self.socket_user_map[websocket] = username
+        
+        logger.info(f"User {username} connected to room {room_id}")
 
-        # Load room history from database if not in memory
         if room_id not in self.history:
             await self.load_room_history(room_id)
 
@@ -36,6 +39,7 @@ class ConnectionManager:
             await websocket.send_text(
                 '{"type":"init","history":[' + ','.join(filtered_history) + ']}'
             )
+            logger.debug(f"Sent {len(filtered_history)} history events to {username} in room {room_id}")
 
     async def disconnect(self, websocket: WebSocket, room_id: str):
         username = self.socket_user_map.pop(websocket, None)
@@ -49,67 +53,57 @@ class ConnectionManager:
                     json.dumps({"type": "user_left", "username": username}),
                     room_id
                 )
+                logger.info(f"User {username} disconnected from room {room_id}")
             
             if room_id in self.active_connections and not self.active_connections[room_id]:
                 del self.active_connections[room_id]
+                logger.debug(f"Room {room_id} has no active connections")
 
     async def send_personal_message(self, message: str, websocket: WebSocket):
         try:
             await websocket.send_text(message)
         except Exception as e:
-            print(f"Error sending personal message: {e}")
+            logger.error(f"Error sending personal message: {e}")
 
     async def save_room_history(self, room_id):
-        try:
-            async with AsyncSessionLocal() as session:
-                events = self.history.get(room_id, [])
-                result = await session.execute(select(RoomHistory).where(RoomHistory.room_id == room_id))
-                obj = result.scalars().first()
-                if obj:
-                    obj.history_json = json.dumps(events)
-                else:
-                    obj = RoomHistory(room_id=room_id, history_json=json.dumps(events))
-                    session.add(obj)
-                await session.commit()
-        except Exception as e:
-            print(f"Error saving room history: {e}")
+        """Save room drawing history using CanvasService"""
+        async with AsyncSessionLocal() as session:
+            events = self.history.get(room_id, [])
+            await CanvasService.save_room_history(session, room_id, events)
 
     async def load_room_history(self, room_id):
-        try:
-            async with AsyncSessionLocal() as session:
-                result = await session.execute(select(RoomHistory).where(RoomHistory.room_id == room_id))
-                obj = result.scalars().first()
-                if obj and obj.history_json:
-                    self.history[room_id] = json.loads(obj.history_json)
-                else:
-                    self.history[room_id] = []
-        except Exception as e:
-            print(f"Error loading room history: {e}")
-            self.history[room_id] = []
+        """Load room drawing history using CanvasService"""
+        async with AsyncSessionLocal() as session:
+            self.history[room_id] = await CanvasService.load_room_history(session, room_id)
 
     async def broadcast(self, message: str, room_id: str, username: str = None, sender_ws: WebSocket = None):
         try:
             event = json.loads(message)
             event_type = event.get('type')
         except Exception as e:
-            print(f"Error parsing message: {e}")
+            logger.error(f"Error parsing WebSocket message: {e}")
             event_type = None
 
-        # Save chat message to DB
         if event_type == "chat":
-            await self.save_chat_message(
-                room_id,
-                event.get("username"),
-                event.get("message"),
-                event.get("timestamp")
-            )
+            async with AsyncSessionLocal() as session:
+                from datetime import datetime
+                await CanvasService.save_chat_message(
+                    session,
+                    room_id,
+                    event.get("username"),
+                    event.get("message"),
+                    event.get("timestamp") or datetime.utcnow()
+                )
 
         if event_type == "clear":
-            is_admin = await self.is_admin(room_id, username)
+            async with AsyncSessionLocal() as session:
+                is_admin = await RoomService.is_room_admin(session, room_id, username)
             if is_admin:
                 self.history[room_id] = []
                 await self.save_room_history(room_id)
+                logger.info(f"Room {room_id} cleared by admin {username}")
             else:
+                logger.warning(f"Non-admin user {username} attempted to clear room {room_id}")
                 for connection in self.active_connections.get(room_id, []):
                     try:
                         await connection.send_text(json.dumps({"type": "error", "message": "Only the room admin can clear the board."}))
@@ -118,15 +112,18 @@ class ConnectionManager:
                 return
 
         elif event_type == "delete_room":
-            is_admin = await self.is_admin(room_id, username)
+            async with AsyncSessionLocal() as session:
+                is_admin = await RoomService.is_room_admin(session, room_id, username)
             if is_admin:
                 await self.delete_room(room_id)
+                logger.info(f"Room {room_id} deleted by admin {username}")
                 for connection in self.active_connections.get(room_id, []):
                     try:
                         await connection.send_text(json.dumps({"type": "info", "message": "Room deleted by admin."}))
                     except:
                         pass
             else:
+                logger.warning(f"Non-admin user {username} attempted to delete room {room_id}")
                 for connection in self.active_connections.get(room_id, []):
                     try:
                         await connection.send_text(json.dumps({"type": "error", "message": "Only admin can delete the room."}))
@@ -136,13 +133,19 @@ class ConnectionManager:
 
         elif event_type not in ("cursor", "undo", "chat"):
             self.history.setdefault(room_id, []).append(message)
-            if len(self.history[room_id]) > MAX_HISTORY:
-                self.history[room_id] = self.history[room_id][-MAX_HISTORY:]
+            if len(self.history[room_id]) > settings.MAX_HISTORY_PER_ROOM:
+                self.history[room_id] = self.history[room_id][-settings.MAX_HISTORY_PER_ROOM:]
             await self.save_room_history(room_id)
 
         if event_type == "save_snapshot":
-            await self.save_snapshot(room_id, event["snapshot"], event["username"])
-            snaphistory = await self.get_snapshots(room_id)
+            async with AsyncSessionLocal() as session:
+                await SnapshotService.save_snapshot(
+                    session,
+                    room_id,
+                    event["snapshot"],
+                    event["username"]
+                )
+                snaphistory = await SnapshotService.get_snapshots_by_room(session, room_id)
             for connection in self.active_connections.get(room_id, []):
                 try:
                     await connection.send_text(json.dumps({
@@ -154,9 +157,11 @@ class ConnectionManager:
             return
 
         if event_type == "restore_snapshot":
-            snap_data = await self.get_snapshot_data(event["snapshot_id"])
+            async with AsyncSessionLocal() as session:
+                snap_data = await SnapshotService.get_snapshot_data(session, event["snapshot_id"])
             restored_by = event["username"]
             if snap_data:
+                logger.info(f"Snapshot {event['snapshot_id']} restored in room {room_id} by {restored_by}")
                 for connection in self.active_connections.get(room_id, []):
                     try:
                         await connection.send_text(json.dumps({
@@ -170,7 +175,8 @@ class ConnectionManager:
             return
 
         if event_type == "get_snapshots":
-            snaphistory = await self.get_snapshots(room_id)
+            async with AsyncSessionLocal() as session:
+                snaphistory = await SnapshotService.get_snapshots_by_room(session, room_id)
             for connection in self.active_connections.get(room_id, []):
                 try:
                     await connection.send_text(json.dumps({
@@ -191,127 +197,30 @@ class ConnectionManager:
             try:
                 await connection.send_text(message)
             except Exception as e:
-                print(f"Error broadcasting to client: {e}")
+                logger.error(f"Error broadcasting to client in room {room_id}: {e}")
                 disconnected.append(connection)
         for conn in disconnected:
             await self.disconnect(conn, room_id)
-
-    # Save chat messages to database with timestamp conversion
-    async def save_chat_message(self, room_id, username, message, timestamp):
-        try:
-            if isinstance(timestamp, str):
-                
-                if timestamp.endswith('Z'):
-                    timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-                else:
-                    timestamp = datetime.fromisoformat(timestamp)
-            async with AsyncSessionLocal() as session:
-                chat_msg = ChatMessage(
-                    room_id=room_id,
-                    username=username,
-                    message=message,
-                    timestamp=timestamp
-                )
-                session.add(chat_msg)
-                await session.commit()
-        except Exception as e:
-            print(f"Error saving chat message: {e}")
 
     def list_rooms(self):
         return list(self.rooms)
 
     async def create_room_admin(self, room_name: str, admin_username: str) -> bool:
+        """Create room using RoomService"""
         self.rooms.add(room_name)
-        try:
-            async with AsyncSessionLocal() as session:
-                result = await session.execute(
-                    select(Room).where(Room.name == room_name)
-                )
-                obj = result.scalars().first()
-                if obj:
-                    return False
-                room_obj = Room(name=room_name, admin_username=admin_username)
-                session.add(room_obj)
-                await session.commit()
-                return True
-        except Exception as e:
-            print(f"Error creating room: {e}")
-            return False
+        async with AsyncSessionLocal() as session:
+            room = await RoomService.create_room(session, room_name, admin_username)
+            return room is not None
 
     async def delete_room(self, room_id: str):
+        """Delete room using RoomService"""
         if room_id in self.rooms:
             self.rooms.remove(room_id)
-        try:
-            async with AsyncSessionLocal() as session:
-                await session.execute(
-                    Room.__table__.delete().where(Room.name == room_id)
-                )
-                await session.execute(
-                    RoomHistory.__table__.delete().where(RoomHistory.room_id == room_id)
-                )
-                await session.execute(
-                    Snapshot.__table__.delete().where(Snapshot.room_id == room_id)
-                )
-                await session.execute(
-                    ChatMessage.__table__.delete().where(ChatMessage.room_id == room_id)
-                )
-                await session.commit()
-        except Exception as e:
-            print(f"Error deleting room: {e}")
+        
+        async with AsyncSessionLocal() as session:
+            await RoomService.delete_room(session, room_id)
+        
         if room_id in self.active_connections:
             del self.active_connections[room_id]
         if room_id in self.history:
             del self.history[room_id]
-
-    async def is_admin(self, room_name: str, username: str):
-        try:
-            async with AsyncSessionLocal() as session:
-                result = await session.execute(select(Room).where(Room.name == room_name))
-                room = result.scalars().first()
-                return room and (room.admin_username or "").strip().lower() == (username or "").strip().lower()
-        except Exception as e:
-            print(f"Error checking admin status: {e}")
-            return False
-
-    # SNAPSHOT LOGIC
-    async def save_snapshot(self, room_id, snapshot_data, saved_by):
-        try:
-            async with AsyncSessionLocal() as session:
-                snapshot = Snapshot(room_id=room_id, saved_by=saved_by, data=snapshot_data)
-                session.add(snapshot)
-                await session.commit()
-        except Exception as e:
-            print(f"Error saving snapshot: {e}")
-
-    async def get_snapshots(self, room_id):
-        try:
-            async with AsyncSessionLocal() as session:
-                result = await session.execute(
-                    select(Snapshot).where(Snapshot.room_id == room_id).order_by(Snapshot.created_at.desc())
-                )
-                snapshots = result.scalars().all()
-                return [
-                    {
-                        "id": snap.id,
-                        "saved_by": snap.saved_by,
-                        "created_at": str(snap.created_at)
-                    }
-                    for snap in snapshots
-                ]
-        except Exception as e:
-            print(f"Error getting snapshots: {e}")
-            return []
-
-    async def get_snapshot_data(self, snapshot_id):
-        try:
-            async with AsyncSessionLocal() as session:
-                result = await session.execute(
-                    select(Snapshot).where(Snapshot.id == snapshot_id)
-                )
-                snap = result.scalars().first()
-                if snap:
-                    return snap.data
-                return None
-        except Exception as e:
-            print(f"Error getting snapshot data: {e}")
-            return None

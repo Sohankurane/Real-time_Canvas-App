@@ -1,0 +1,131 @@
+[2025-11-26 13:08:59] [[32mINFO[0m] [canvas_app.on_startup:30] Collaborative Canvas API v1.0.0 started successfully
+[2025-11-26 13:09:26] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: Sohan1
+[2025-11-26 13:09:29] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: tester1
+[2025-11-26 13:09:30] [[32mINFO[0m] [canvas_app.connect:28] User tester1 connected to room Room 1
+[2025-11-26 13:09:34] [[32mINFO[0m] [canvas_app.connect:28] User tester1 connected to room Room 1
+[2025-11-26 13:10:17] [[31mERROR[0m] [canvas_app.broadcast:200] Error broadcasting to client in room Room 1: 
+[2025-11-26 13:10:17] [[32mINFO[0m] [canvas_app.disconnect:56] User tester1 disconnected from room Room 1
+[2025-11-26 13:10:17] [[32mINFO[0m] [canvas_app.disconnect:56] User tester1 disconnected from room Room 1
+[2025-11-26 13:10:17] [[31mERROR[0m] [canvas_app.websocket_endpoint:80] Unexpected WebSocket error in room Room 1: WebSocket is not connected. Need to call "accept" first.
+Traceback (most recent call last):
+  File "D:\REACT\collaborative-drawing-app\backend\app\main.py", line 72, in websocket_endpoint
+    data = await websocket.receive_text()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "d:\REACT\collaborative-drawing-app\.venv\Lib\site-packages\starlette\websockets.py", line 118, in receive_text
+    raise RuntimeError('WebSocket is not connected. Need to call "accept" first.')
+RuntimeError: WebSocket is not connected. Need to call "accept" first.
+[2025-11-26 13:10:43] [[32mINFO[0m] [canvas_app.on_shutdown:35] Collaborative Canvas API shutting down
+[2025-11-26 13:10:47] [[32mINFO[0m] [canvas_app.on_startup:30] Collaborative Canvas API v1.0.0 started successfully
+[2025-11-26 13:11:38] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: tester1
+[2025-11-26 13:11:42] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: Sohan1
+[2025-11-26 13:11:43] [[32mINFO[0m] [canvas_app.connect:28] User Sohan1 connected to room Room 1
+[2025-11-26 13:11:47] [[32mINFO[0m] [canvas_app.connect:28] User Sohan1 connected to room Room 1
+[2025-11-26 13:11:59] [[32mINFO[0m] [canvas_app.disconnect:56] User Sohan1 disconnected from room Room 1
+[2025-11-26 13:12:07] [[32mINFO[0m] [canvas_app.disconnect:56] User Sohan1 disconnected from room Room 1
+[2025-11-26 13:12:20] [[32mINFO[0m] [canvas_app.on_shutdown:35] Collaborative Canvas API shutting down
+[2025-11-26 14:03:38] [[32mINFO[0m] [canvas_app.on_startup:30] Collaborative Canvas API v1.0.0 started successfully
+[2025-11-26 14:04:06] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: Sohan1
+[2025-11-26 14:04:08] [[32mINFO[0m] [canvas_app.connect:28] User Sohan1 connected to room Room 1
+[2025-11-26 14:04:20] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: tester1
+[2025-11-26 14:04:21] [[32mINFO[0m] [canvas_app.connect:28] User tester1 connected to room Room 1
+[2025-11-26 14:04:40] [[31mERROR[0m] [canvas_app.broadcast:200] Error broadcasting to client in room Room 1: 
+[2025-11-26 14:04:40] [[32mINFO[0m] [canvas_app.disconnect:56] User tester1 disconnected from room Room 1
+[2025-11-26 14:04:40] [[32mINFO[0m] [canvas_app.disconnect:56] User Sohan1 disconnected from room Room 1
+[2025-11-26 14:04:40] [[31mERROR[0m] [canvas_app.websocket_endpoint:80] Unexpected WebSocket error in room Room 1: WebSocket is not connected. Need to call "accept" first.
+Traceback (most recent call last):
+  File "D:\REACT\collaborative-drawing-app\backend\app\main.py", line 72, in websocket_endpoint
+    data = await websocket.receive_text()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "d:\REACT\collaborative-drawing-app\.venv\Lib\site-packages\starlette\websockets.py", line 118, in receive_text
+    raise RuntimeError('WebSocket is not connected. Need to call "accept" first.')
+RuntimeError: WebSocket is not connected. Need to call "accept" first.
+[2025-11-26 14:05:11] [[32mINFO[0m] [canvas_app.on_shutdown:35] Collaborative Canvas API shutting down
+[2025-11-26 14:07:57] [[32mINFO[0m] [canvas_app.on_startup:30] Collaborative Canvas API v1.0.0 started successfully
+[2025-11-26 14:11:49] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: Sohan1
+[2025-11-26 14:11:55] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: tester1
+[2025-11-26 14:12:00] [[32mINFO[0m] [canvas_app.connect:28] User tester1 connected to room Room 1
+[2025-11-26 14:12:04] [[32mINFO[0m] [canvas_app.connect:28] User tester1 connected to room Room 1
+[2025-11-26 14:12:48] [[32mINFO[0m] [canvas_app.disconnect:56] User tester1 disconnected from room Room 1
+[2025-11-26 14:12:51] [[32mINFO[0m] [canvas_app.disconnect:56] User tester1 disconnected from room Room 1
+[2025-11-26 14:12:56] [[32mINFO[0m] [canvas_app.on_shutdown:35] Collaborative Canvas API shutting down
+[2025-11-26 14:44:38] [[32mINFO[0m] [canvas_app.on_startup:30] Collaborative Canvas API v1.0.0 started successfully
+[2025-11-26 14:45:01] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: tester1
+[2025-11-26 14:45:05] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: Sohan1
+[2025-11-26 14:45:13] [[32mINFO[0m] [canvas_app.connect:28] User Sohan1 connected to room Room 1
+[2025-11-26 14:45:16] [[32mINFO[0m] [canvas_app.connect:28] User Sohan1 connected to room Room 1
+[2025-11-26 14:45:49] [[32mINFO[0m] [canvas_app.save_snapshot:28] Snapshot saved for room Room 1 by tester1
+[2025-11-26 14:46:42] [[32mINFO[0m] [canvas_app.disconnect:56] User Sohan1 disconnected from room Room 1
+[2025-11-26 14:47:05] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: tester1
+[2025-11-26 14:47:08] [[32mINFO[0m] [canvas_app.create_room:37] Room created: Room2 by admin tester1
+[2025-11-26 14:47:08] [[32mINFO[0m] [canvas_app.create_room:125] Room Room2 created by tester1
+[2025-11-26 14:47:15] [[32mINFO[0m] [canvas_app.connect:28] User tester1 connected to room Room2
+[2025-11-26 14:47:18] [[32mINFO[0m] [canvas_app.disconnect:56] User Sohan1 disconnected from room Room 1
+[2025-11-26 14:47:20] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: Sohan1
+[2025-11-26 14:47:24] [[32mINFO[0m] [canvas_app.connect:28] User Sohan1 connected to room Room2
+[2025-11-26 14:47:32] [[33mWARNING[0m] [canvas_app.broadcast:106] Non-admin user Sohan1 attempted to clear room Room2
+[2025-11-26 14:47:34] [[32mINFO[0m] [canvas_app.broadcast:104] Room Room2 cleared by admin tester1
+[2025-11-26 14:47:43] [[32mINFO[0m] [canvas_app.disconnect:56] User Sohan1 disconnected from room Room2
+[2025-11-26 14:47:44] [[32mINFO[0m] [canvas_app.connect:28] User Sohan1 connected to room Room 1
+[2025-11-26 14:47:46] [[32mINFO[0m] [canvas_app.connect:28] User Sohan1 connected to room Room2
+[2025-11-26 14:48:05] [[32mINFO[0m] [canvas_app.disconnect:56] User Sohan1 disconnected from room Room 1
+[2025-11-26 14:48:05] [[31mERROR[0m] [canvas_app.broadcast:200] Error broadcasting to client in room Room2: 
+[2025-11-26 14:48:05] [[32mINFO[0m] [canvas_app.disconnect:56] User Sohan1 disconnected from room Room2
+[2025-11-26 14:48:05] [[32mINFO[0m] [canvas_app.disconnect:56] User tester1 disconnected from room Room2
+[2025-11-26 14:48:05] [[31mERROR[0m] [canvas_app.websocket_endpoint:80] Unexpected WebSocket error in room Room2: WebSocket is not connected. Need to call "accept" first.
+Traceback (most recent call last):
+  File "D:\REACT\collaborative-drawing-app\backend\app\main.py", line 72, in websocket_endpoint
+    data = await websocket.receive_text()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "d:\REACT\collaborative-drawing-app\.venv\Lib\site-packages\starlette\websockets.py", line 118, in receive_text
+    raise RuntimeError('WebSocket is not connected. Need to call "accept" first.')
+RuntimeError: WebSocket is not connected. Need to call "accept" first.
+[2025-11-26 14:50:36] [[32mINFO[0m] [canvas_app.on_shutdown:35] Collaborative Canvas API shutting down
+[2025-11-26 14:50:38] [[32mINFO[0m] [canvas_app.on_startup:30] Collaborative Canvas API v1.0.0 started successfully
+[2025-11-26 14:50:45] [[32mINFO[0m] [canvas_app.on_shutdown:35] Collaborative Canvas API shutting down
+[2025-11-26 14:51:25] [[32mINFO[0m] [canvas_app.on_startup:30] Collaborative Canvas API v1.0.0 started successfully
+[2025-11-26 14:51:36] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: Sohan1
+[2025-11-26 14:51:43] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: tester1
+[2025-11-26 14:51:47] [[32mINFO[0m] [canvas_app.connect:28] User tester1 connected to room Room 1
+[2025-11-26 14:51:53] [[32mINFO[0m] [canvas_app.connect:28] User tester1 connected to room Room 1
+[2025-11-26 14:52:26] [[33mWARNING[0m] [canvas_app.broadcast:126] Non-admin user tester1 attempted to delete room Room 1
+[2025-11-26 14:52:33] [[32mINFO[0m] [canvas_app.disconnect:56] User tester1 disconnected from room Room 1
+[2025-11-26 14:52:33] [[32mINFO[0m] [canvas_app.connect:28] User tester1 connected to room Room2
+[2025-11-26 14:52:35] [[32mINFO[0m] [canvas_app.connect:28] User tester1 connected to room Room 1
+[2025-11-26 14:52:35] [[33mWARNING[0m] [canvas_app.broadcast:126] Non-admin user tester1 attempted to delete room Room 1
+[2025-11-26 14:52:35] [[33mWARNING[0m] [canvas_app.broadcast:126] Non-admin user tester1 attempted to delete room Room 1
+[2025-11-26 14:52:35] [[33mWARNING[0m] [canvas_app.broadcast:126] Non-admin user tester1 attempted to delete room Room 1
+[2025-11-26 14:52:37] [[33mWARNING[0m] [canvas_app.broadcast:126] Non-admin user tester1 attempted to delete room Room 1
+[2025-11-26 14:52:37] [[33mWARNING[0m] [canvas_app.broadcast:126] Non-admin user tester1 attempted to delete room Room 1
+[2025-11-26 14:52:37] [[33mWARNING[0m] [canvas_app.broadcast:126] Non-admin user tester1 attempted to delete room Room 1
+[2025-11-26 14:52:37] [[33mWARNING[0m] [canvas_app.broadcast:126] Non-admin user tester1 attempted to delete room Room 1
+[2025-11-26 14:52:38] [[33mWARNING[0m] [canvas_app.broadcast:126] Non-admin user tester1 attempted to delete room Room 1
+[2025-11-26 14:52:53] [[32mINFO[0m] [canvas_app.disconnect:56] User tester1 disconnected from room Room2
+[2025-11-26 14:52:53] [[32mINFO[0m] [canvas_app.disconnect:56] User tester1 disconnected from room Room 1
+[2025-11-26 14:52:55] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: tester1
+[2025-11-26 14:52:57] [[32mINFO[0m] [canvas_app.connect:28] User tester1 connected to room Room2
+[2025-11-26 14:52:57] [[32mINFO[0m] [canvas_app.delete_room:97] Room deleted successfully: Room2
+[2025-11-26 14:52:57] [[32mINFO[0m] [canvas_app.broadcast:119] Room Room2 deleted by admin tester1
+[2025-11-26 14:53:16] [[32mINFO[0m] [canvas_app.disconnect:56] User tester1 disconnected from room Room 1
+[2025-11-26 14:53:21] [[32mINFO[0m] [canvas_app.on_shutdown:35] Collaborative Canvas API shutting down
+[2025-11-26 15:28:06] [[32mINFO[0m] [canvas_app.on_startup:30] Collaborative Canvas API v1.0.0 started successfully
+[2025-11-26 15:28:22] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: Sohan1
+[2025-11-26 15:28:24] [[32mINFO[0m] [canvas_app.connect:28] User Sohan1 connected to room Room 1
+[2025-11-26 15:29:31] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: tester1
+[2025-11-26 15:29:33] [[32mINFO[0m] [canvas_app.connect:28] User tester1 connected to room Room 1
+[2025-11-26 15:30:28] [[32mINFO[0m] [canvas_app.disconnect:56] User tester1 disconnected from room Room 1
+[2025-11-26 15:30:29] [[32mINFO[0m] [canvas_app.disconnect:56] User Sohan1 disconnected from room Room 1
+[2025-11-26 15:30:32] [[32mINFO[0m] [canvas_app.on_shutdown:35] Collaborative Canvas API shutting down
+[2025-11-26 15:40:08] [[32mINFO[0m] [canvas_app.on_startup:30] Collaborative Canvas API v1.0.0 started successfully
+[2025-11-26 15:40:18] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: tester1
+[2025-11-26 15:40:25] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: Sohan1
+[2025-11-26 15:40:27] [[32mINFO[0m] [canvas_app.connect:28] User Sohan1 connected to room Room 1
+[2025-11-26 15:40:30] [[32mINFO[0m] [canvas_app.connect:28] User Sohan1 connected to room Room 1
+[2025-11-26 15:41:13] [[32mINFO[0m] [canvas_app.disconnect:56] User Sohan1 disconnected from room Room 1
+[2025-11-26 15:41:15] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: Sohan1
+[2025-11-26 15:41:17] [[32mINFO[0m] [canvas_app.disconnect:56] User Sohan1 disconnected from room Room 1
+[2025-11-26 15:41:20] [[32mINFO[0m] [canvas_app.authenticate_user:63] User authenticated successfully: tester1
+[2025-11-26 15:41:22] [[32mINFO[0m] [canvas_app.connect:28] User tester1 connected to room Room 1
+[2025-11-26 15:41:34] [[32mINFO[0m] [canvas_app.connect:28] User tester1 connected to room Room 1
+[2025-11-26 15:42:19] [[32mINFO[0m] [canvas_app.disconnect:56] User tester1 disconnected from room Room 1
+[2025-11-26 15:42:27] [[32mINFO[0m] [canvas_app.disconnect:56] User tester1 disconnected from room Room 1
+[2025-11-26 15:42:35] [[32mINFO[0m] [canvas_app.on_shutdown:35] Collaborative Canvas API shutting down

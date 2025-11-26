@@ -1,96 +1,96 @@
 import React, { useState } from 'react';
 import { WebSocketProvider } from './context/WebSocketContext';
-import Canvas from './components/Canvas';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import RoomList from './components/RoomList';
+import Canvas from './components/Canvas'; // We'll use old Canvas for now
+import { VIEWS } from './constants';
+import './App.css';
 
 const App = () => {
-  const [view, setView] = useState('login');
+  const [view, setView] = useState(VIEWS.LOGIN);
   const [user, setUser] = useState(null);
-  // roomInfo contains {name, admin_username}
-  const [roomInfo, setRoomInfo] = useState({ name: '', admin_username: '' });
+  const [roomInfo, setRoomInfo] = useState({ name: '', adminUsername: '' });
 
-  // Extracts the first name from the full name for personalization
+  // Extract first name from full name
   const getFirstName = (fullName) => {
     if (!fullName) return '';
     return fullName.trim().split(' ')[0];
   };
 
+  // Handle successful login
   const handleLogin = (userData) => {
-    const firstName = getFirstName(userData.fullName || userData.full_name);
+    const firstName = getFirstName(userData.fullName || userData.username);
     setUser({ ...userData, firstName });
-    setView('room');
+    setView(VIEWS.ROOM_LIST);
   };
 
+  // Handle successful registration
   const handleRegister = () => {
-    setView('login');
+    setView(VIEWS.LOGIN);
   };
 
-  const renderHeader = () => (
-    <header style={{
-      padding: '16px 0 0 0',
-      textAlign: 'center',
-      fontWeight: 700,
-      fontSize: '1.8rem',
-      color: '#2d3748',
-      letterSpacing: '0.5px'
-    }}>
-      {user && user.firstName
-        ? `${user.firstName}'s Real-Time Collaborative Canvas`
-        : 'Real-Time Collaborative Canvas'}
-    </header>
-  );
-
-  // Handler to switch back to room selection
-  const handleSwitchRoom = () => setView('room');
-
-  // Handler for room joining (from RoomList)
+  // Handle room join
   const handleJoinRoom = (room) => {
     setRoomInfo({
-      name: room.name || room, // fallback for string
-      admin_username: room.admin_username || ''
+      name: typeof room === 'string' ? room : room.name,
+      adminUsername: room.admin_username || room.adminUsername
     });
-    setView('canvas');
+    setView(VIEWS.CANVAS);
+  };
+
+  // Handle switch room (back to room list)
+  const handleSwitchRoom = () => {
+    setView(VIEWS.ROOM_LIST);
+  };
+
+  // Render header based on view
+  const renderHeader = () => {
+    if (view === VIEWS.LOGIN || view === VIEWS.REGISTER) {
+      return null;
+    }
+
+    return (
+      <header className="app-header">
+        {user?.firstName 
+          ? `${user.firstName}'s Real-Time Collaborative Canvas` 
+          : 'Real-Time Collaborative Canvas'}
+      </header>
+    );
   };
 
   return (
     <WebSocketProvider roomId={roomInfo.name}>
-      <div style={{
-        background: '#f6f7fb',
-        minHeight: '100vh',
-        paddingBottom: 48
-      }}>
+      <div className="app-container">
         {renderHeader()}
-        <main style={{
-          margin: '32px auto',
-          maxWidth: 980,
-          minHeight: 500,
-          background: '#fff',
-          borderRadius: 18,
-          boxShadow: '0 3px 24px #e1e8ed',
-          padding: 28,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center'
-        }}>
-          {view === 'login' && (
-            <LoginForm onSuccess={handleLogin} onSwitch={() => setView('register')} />
-          )}
-          {view === 'register' && (
-            <RegisterForm onSuccess={handleRegister} onSwitch={() => setView('login')} />
-          )}
-          {view === 'room' && (
-            <RoomList
-              user={user}
-              onJoinRoom={handleJoinRoom} // note updated prop name here
+        
+        <main className="app-main">
+          {view === VIEWS.LOGIN && (
+            <LoginForm
+              onSuccess={handleLogin}
+              onSwitch={() => setView(VIEWS.REGISTER)}
             />
           )}
-          {view === 'canvas' && (
+          
+          {view === VIEWS.REGISTER && (
+            <RegisterForm
+              onSuccess={handleRegister}
+              onSwitch={() => setView(VIEWS.LOGIN)}
+            />
+          )}
+          
+          {view === VIEWS.ROOM_LIST && (
+            <RoomList
+              user={user}
+              onJoinRoom={handleJoinRoom}
+            />
+          )}
+          
+          {view === VIEWS.CANVAS && (
             <Canvas
               user={user}
               roomId={roomInfo.name}
-              adminUsername={roomInfo.admin_username}
+              adminUsername={roomInfo.adminUsername}
               onSwitchRoom={handleSwitchRoom}
             />
           )}
